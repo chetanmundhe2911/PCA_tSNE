@@ -3,7 +3,8 @@ import pandas as pd
 import xgboost as xgb
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
@@ -14,7 +15,6 @@ import joblib  # For saving and loading models
 from sklearn.model_selection import GridSearchCV
 
 # Assuming train_df is already loaded
-
 train_df = pd.read_csv("/home/ec2-user/python/modeltraining/project/data/raw/train.csv")
 test_df = pd.read_csv("/home/ec2-user/python/modeltraining/project/data/raw/test.csv")
 print("Train shape : ", train_df.shape)
@@ -48,24 +48,23 @@ models = {
 # Define hyperparameter grids for GridSearchCV
 param_grids = {
     'XGBoost': {
-        'eta': [0.01, 0.05, 0.1],
-        'max_depth': [4, 6, 8],
-        'subsample': [0.6, 0.7, 0.8],
-        'colsample_bytree': [0.6, 0.7, 0.8]
+        'eta': [0.01, 0.05],
+        'max_depth': [4, 6],
+        'subsample': [0.6, 0.7],
+        'colsample_bytree': [0.6, 0.7]
     },
     'Random Forest': {
-        'n_estimators': [50, 100, 200],
+        'n_estimators': [50, 100],
         'max_depth': [10, 20, None],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
+        'min_samples_split': [2, 5],
+        'min_samples_leaf': [1, 2]
     },
     'SVR': {
-        'C': [0.1, 1, 10],
-        'epsilon': [0.01, 0.1, 0.2],
+        'C': [0.1, 1],
+        'epsilon': [0.01, 0.1],
         'kernel': ['rbf', 'linear']
     }
 }
-
 
 # Function to perform GridSearchCV and return the best model
 def tune_hyperparameters(model, param_grid, train_X, train_y):
@@ -82,9 +81,20 @@ def train_and_evaluate(model, train_X, train_y):
     
     # Make predictions
     preds = model.predict(train_X)
-    r2 = r2_score(train_y, preds)
     
-    return r2, training_time
+    # Calculate evaluation metrics
+    r2 = r2_score(train_y, preds)
+    mae = mean_absolute_error(train_y, preds)
+    mse = mean_squared_error(train_y, preds)
+    rmse = np.sqrt(mse)
+    mape = mean_absolute_percentage_error(train_y, preds)
+    
+    # Calculate Adjusted R2
+    n = len(train_y)  # Number of data points
+    p = train_X.shape[1]  # Number of features
+    adj_r2 = 1 - (1 - r2) * (n - 1) / (n - p - 1)
+
+    return r2, adj_r2, mae, mse, rmse, mape, training_time
 
 # Initialize a dictionary to store results
 results = []
@@ -106,7 +116,7 @@ for threshold in variance_thresholds:
             best_model = model  # No tuning for Linear Regression
         
         # Train and evaluate the model on PCA-transformed features
-        r2, training_time = train_and_evaluate(best_model, train_X_pca, train_y)
+        r2, adj_r2, mae, mse, rmse, mape, training_time = train_and_evaluate(best_model, train_X_pca, train_y)
         
         # Store results
         results.append({
@@ -114,11 +124,16 @@ for threshold in variance_thresholds:
             'Model': model_name,
             'Best Parameters': best_params if model_name in param_grids else 'N/A',
             'R2 Score': r2,
+            'Adjusted R2': adj_r2,
+            'MAE': mae,
+            'MSE': mse,
+            'RMSE': rmse,
+            'MAPE': mape,
             'Time Taken (s)': training_time
         })
         
         # Print model performance and time taken
-        print(f"{model_name}: R² = {r2:.4f}, Time Taken = {training_time:.4f} seconds")
+        print(f"{model_name}: R² = {r2:.4f}, Adjusted R² = {adj_r2:.4f}, MAE = {mae:.4f}, MSE = {mse:.4f}, RMSE = {rmse:.4f}, MAPE = {mape:.4f}, Time Taken = {training_time:.4f} seconds")
 
         # Step 6: Save the trained model to the specified path
         model_path = f"/home/ec2-user/python/modeltraining/pca/models/{model_name}_{threshold}.pkl"
