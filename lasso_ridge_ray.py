@@ -8,7 +8,7 @@ import ray
 import matplotlib.pyplot as plt
 
 # Initialize Ray
-ray.init(ignore_reinit_error=True, dashboard_port=8506)
+ray.init(ignore_reinit_error=True, dashboard_port=8506) # port updated
 
 # Print the link to the Ray dashboard
 print("You can access the Ray dashboard at: http://localhost:8506/")
