@@ -8,7 +8,10 @@ import ray
 import matplotlib.pyplot as plt
 
 # Initialize Ray
-ray.init(ignore_reinit_error=True, dashboard_port=8507)
+ray.init(ignore_reinit_error=True, dashboard_port=8506)
+
+# Print the link to the Ray dashboard
+print("You can access the Ray dashboard at: http://localhost:8506/")
 
 # Load data
 train = pd.read_csv('/home/centos/python/chetan/train.csv')
@@ -54,6 +57,7 @@ def run_grid_search(model, param_grid, X_train_scaled, y_train):
     grid_search = GridSearchCV(model, param_grid, cv=5, n_jobs=-1)
     grid_search.fit(X_train_scaled, y_train)
     return grid_search.best_estimator_, grid_search.best_params_, grid_search.best_score_
+
 
 # Lasso Regression (parallelized)
 lasso = Lasso(max_iter=10000, alpha=0.01)
